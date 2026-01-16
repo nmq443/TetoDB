@@ -1,5 +1,7 @@
 // CommandDispatcher.cpp
 
+#include "Database.h"
+#include "Schema.h"
 #include "CommandDispatcher.h"
 
 extern Database* DB_INSTANCE;
@@ -28,6 +30,7 @@ Result ProcessCommand(string &line){
                 else cout << '"' << (char*)(r->value[c->columnName]) << "\" | ";
             }
             cout << endl;
+            delete r;
         }
 
         return Result::OK;

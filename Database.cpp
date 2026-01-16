@@ -1,6 +1,10 @@
 // Database.cpp
 
+#include <vector>
+#include <map>
 #include "Database.h"
+#include "Schema.h"
+#include "Cursor.h"
 
 
 Database::Database(const string& name)
@@ -62,14 +66,13 @@ Result Database::Insert(const string& name, stringstream& ss){
 
     if(t->rowCount >= t->maxRows) return Result::OUT_OF_STORAGE;
 
-    void* slot = t->RowSlot(t->rowCount);
-    if(!slot) return Result::OUT_OF_STORAGE;
-
+    Cursor* cursor = t->EndOfTable();
     Row* r = t->ParseRow(ss);
-    t->SerializeRow(r, slot);
+    t->SerializeRow(r, cursor->Address());
     t->rowCount++;
 
     delete r;
+    delete cursor;
     return Result::OK;
 }
 
@@ -79,13 +82,15 @@ vector<Row*> Database::SelectAll(const string &name){
 
     vector<Row*> res;
     res.clear();
-
-    for(int i = 0; i < t->rowCount; i++){
-        void* slot = t->RowSlot(i);
+    
+    Cursor* cursor = t->StartOfTable();
+    for(cursor; !cursor->endOfTable; cursor->AdvanceCursor()){
         Row* r = new Row(t->schema);
-        t->DeserializeRow(slot, r);
+        t->DeserializeRow(cursor->Address(), r);
         res.push_back(r);
     }
+    
+    delete cursor;
 
     return res;
 }

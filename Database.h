@@ -2,7 +2,9 @@
 
 #pragma once
 
-#include "Schema.h"
+#include "Common.h"
+class Table;
+class Row;
 
 class Database{
 public:
@@ -19,7 +21,7 @@ public:
     void FlushToMeta();
 
 public:
-    std::map<string, Table*> tables;
+    map<string, Table*> tables;
     const string metaFileName;
     bool running;
 };

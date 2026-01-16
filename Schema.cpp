@@ -1,5 +1,6 @@
 // Schema.cpp
 
+#include "Cursor.h"
 #include "Schema.h"
 
 Column::Column(const string &name, Type type, size_t size, size_t offset)
@@ -59,6 +60,8 @@ Row* Table::ParseRow(stringstream &ss){
 }
 
 void Table::SerializeRow(Row* src, void* dest){
+    if(src == nullptr || dest == nullptr) return;
+
     for(Column* c : schema){
         memset(dest, 0, c->size);
         memcpy(dest, src->value[c->columnName], c->size);
@@ -67,6 +70,8 @@ void Table::SerializeRow(Row* src, void* dest){
 }
 
 void Table::DeserializeRow(void* src, Row* dest){
+    if(src == nullptr || dest == nullptr) return;
+
     for(Column* c : schema){
         memcpy(dest->value[c->columnName], src, c->size);
         src = (char*)src + c->size;
@@ -87,11 +92,17 @@ void* Table::RowSlot(int rowNum){
 
     void* page = pager->GetPage(pageNum);
 
-    if(page == nullptr) page = pager->pages[pageNum] = malloc(PAGE_SIZE);
+    if(page == nullptr) return nullptr;
 
     int offset = rowNum % rowsPerPage * rowSize;
 
     return (char*)page + offset;
 }
 
+Cursor* Table::StartOfTable(){
+    return new Cursor(this, 0);
+}
 
+Cursor* Table::EndOfTable(){
+    return new Cursor(this, rowCount);
+}

@@ -8,8 +8,11 @@
 #include "Common.h"
 #include "Pager.h"
 
+
 #define MAX_PAGE 100
 #define PAGE_SIZE 4096
+
+class Cursor;
 
 class Column{
 public:
@@ -45,6 +48,8 @@ public:
     void AddColumn(Column* c);
     void* RowSlot(int rowNum);
 
+    Cursor* StartOfTable();
+    Cursor* EndOfTable();
 
 public:
     string tableName;

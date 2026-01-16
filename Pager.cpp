@@ -26,6 +26,7 @@ Pager::Pager(const std::string& filename){
 }
 
 Pager::~Pager(){
+    for(int i = 0;i<MAX_PAGES;i++) free(pages[i]);
     close(fileDescriptor);
 }
 
