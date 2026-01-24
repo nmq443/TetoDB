@@ -16,9 +16,11 @@ public:
 
     void* GetPage(int pageNum);
     void Flush(int pageNum, size_t size);
-    
+    int GetUnusedPageNum(); 
 public:
-    int fileDescriptor;
-    size_t fileLength;
     void* pages[MAX_PAGES];
+    int fileDescriptor;
+    int numPages;
+    size_t fileLength;
+    
 };

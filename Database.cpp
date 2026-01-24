@@ -77,17 +77,28 @@ Result Database::Insert(const string& name, stringstream& ss){
     
     Cursor* cursor = t->EndOfTable();
 
-    int newId = t->rowCount;
+    int newRowId = t->rowCount;
     for(Column* c : t->schema){
         if(t->indexPagers.find(c->columnName)!=t->indexPagers.end()){
             Pager* idxPager = t->indexPagers[c->columnName];
-
-            LeafNode* root = (LeafNode*)idxPager->GetPage(0);
-
             int32_t value = *(int32_t*)r->value[c->columnName];
-            LeafNodeInsert(root, value, newId);
+            uint32_t leafPageNum = BtreeFindLeaf(idxPager, 0, value, newRowId);
+            LeafNode* leaf = (LeafNode*)idxPager->GetPage(leafPageNum);
 
+            
+            InsertResult res = LeafNodeInsert(leaf, idxPager, value, newRowId);
+            if(res.didSplit){
+                if(leaf->header.isRoot) CreateNewRoot((NodeHeader*)leaf, idxPager, res.splitKey, res.splitRowId, res.rightChildPageNum);
+                else{
+                    InsertIntoParent(idxPager, (NodeHeader*)leaf, res.splitKey, res.splitRowId, res.rightChildPageNum);
+                }
+            
+            } 
+            
             idxPager->Flush(0, PAGE_SIZE);
+            if(res.didSplit) idxPager->Flush(res.rightChildPageNum, PAGE_SIZE);
+
+            
         }
 
     }
@@ -134,10 +145,14 @@ void Database::SelectWithRange(Table* t, const string& columnName, int L, int R,
     }
 
     Pager* idxPager = t->indexPagers[columnName];
-    LeafNode* root = (LeafNode*)idxPager->GetPage(0);
+    uint32_t startLeafNum = BtreeFindLeaf(idxPager, 0, L, 0);
+    LeafNode* startLeaf = (LeafNode*)idxPager->GetPage(startLeafNum);
+
+    //TODO: add next page pointers, and actually move to the 
+    //      next page if the range extends more than the page
 
     vector<int> selectedRowIds;
-    LeafNodeSelectRange(root, L, R, selectedRowIds);
+    LeafNodeSelectRange(startLeaf, L, R, selectedRowIds);
 
     sort(selectedRowIds.begin(), selectedRowIds.end());
     for(int rowId : selectedRowIds){
@@ -157,7 +172,11 @@ void Database::FlushToMeta() {
     for(auto const& [name, table] : tables){
         ofs << name << " " << table->rowCount << " " << table->schema.size() << endl;
         for(Column* c : table->schema){
-            ofs << c->columnName << " " << (int)c->type << " " << c->size << " " << c->offset << endl;
+            if(c->type==INT){
+                bool hasIndex = table->indexPagers.count(c->columnName);
+                ofs << c->columnName << " " << (int)c->type << " " << hasIndex << " " << c->offset << endl;
+            }
+            else ofs << c->columnName << " " << (int)c->type << " " << c->size << " " << c->offset << endl;
         }
     }
     ofs.close();
@@ -181,7 +200,12 @@ void Database::LoadFromMeta(){
             int cTypeInt;
             size_t cSize, cOffset;
             ifs >> cName >> cTypeInt >> cSize >> cOffset;
-            t->AddColumn(new Column(cName, (Type)cTypeInt, cSize, cOffset));
+            if(cTypeInt == INT){
+                bool hasIndex = cSize;
+                t->AddColumn(new Column(cName, (Type)cTypeInt, 4, cOffset));
+                if(hasIndex) t->CreateIndex(cName);
+            }
+            else t->AddColumn(new Column(cName, (Type)cTypeInt, cSize, cOffset));
         }
         tables[tName] = t;
     }

@@ -1,5 +1,9 @@
 // Pager.cpp
 
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
+
 #include "Pager.h"
 #include <fcntl.h>
 #include <unistd.h>
@@ -10,7 +14,7 @@
 using namespace std;
 
 Pager::Pager(const std::string& filename){
-    fileDescriptor = open(filename.c_str(), O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
+    fileDescriptor = open(filename.c_str(), O_RDWR | O_CREAT | O_BINARY, S_IWUSR | S_IRUSR);
 
     if(fileDescriptor == -1){
         std::cerr << "Error: Unable to open file " << filename << std::endl;
@@ -29,10 +33,20 @@ Pager::Pager(const std::string& filename){
     for(int i = 0; i < MAX_PAGES; i++){
         pages[i] = nullptr;
     }
+
+    if(fileLength % PAGE_SIZE != 0){
+        cerr << "DB file is not a whole number of pages" << endl;
+        exit(1);
+    }
+
+    numPages = fileLength/PAGE_SIZE;
 }
 
 Pager::~Pager(){
-    for(int i = 0;i<MAX_PAGES;i++) free(pages[i]);
+    for(int i = 0;i<MAX_PAGES;i++){
+        if(pages[i]) Flush(i, PAGE_SIZE);
+        free(pages[i]);
+    }
     close(fileDescriptor);
 }
 
@@ -42,6 +56,7 @@ void* Pager::GetPage(int pageNum){
         return nullptr;
     }
 
+    if(pageNum >= numPages) numPages++;
 
     if(pages[pageNum] != nullptr){
         return pages[pageNum];
@@ -81,3 +96,8 @@ void Pager::Flush(int pageNum, size_t size){
 
     _commit(fileDescriptor);
 }
+
+int Pager::GetUnusedPageNum(){
+    return numPages++;
+}
+

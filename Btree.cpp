@@ -1,9 +1,41 @@
 // Btree.cpp
 
-#include "Btree.h"
 #include "Common.h"
+#include "Btree.h"
+#include "Pager.h"
+
 #include <cstring>
 #include <iostream>
+
+
+void CreateNewRoot(NodeHeader* root, Pager* pager, int32_t splitKey, int32_t splitRowId, int32_t rightChildPageNum){
+    int leftChildPageNum = pager->GetUnusedPageNum();
+    NodeHeader* leftChild = (NodeHeader*)pager->GetPage(leftChildPageNum);
+
+    memcpy(leftChild, root, NODE_SIZE);
+    leftChild->isRoot = 0;
+    leftChild->parent = 0;
+
+    NodeHeader* rightChild = (NodeHeader*)pager->GetPage(rightChildPageNum);
+    rightChild->parent = 0;
+
+    InternalNode* internalRoot = (InternalNode*)root;
+    internalRoot->header.type = INTERNAL;
+    internalRoot->header.isRoot = 1;
+    internalRoot->header.numCells = 1;
+    internalRoot->header.parent = 0;
+
+    internalRoot->rightChild = rightChildPageNum;
+
+    internalRoot->cells[0].key = splitKey;
+    internalRoot->cells[0].rowId = splitRowId;
+    internalRoot->cells[0].childPage = leftChildPageNum;
+
+    if(leftChild->type == INTERNAL) UpdateChildParents(pager, (InternalNode*)leftChild, leftChildPageNum);
+    if(rightChild->type == INTERNAL) UpdateChildParents(pager, (InternalNode*)rightChild, rightChildPageNum);
+
+    cout<<"Root grew! Old root moved to Page "<<leftChildPageNum<<endl;
+}
 
 void InitializeLeafNode(LeafNode* node){
     node->header.type = LEAF;
@@ -15,40 +47,219 @@ void InitializeLeafNode(LeafNode* node){
 }
 
 uint16_t LeafNodeFindSlot(LeafNode* node, int32_t targetKey, int32_t targetRowId){
-    
-    for(uint16_t i = 0; i<node->header.numCells; i++){
-        if(node->cells[i].key > targetKey) return i;
-        if(node->cells[i].key == targetKey && node->cells[i].rowId >= targetRowId) return i;
+    uint32_t l = 0;
+    uint32_t r = node->header.numCells;
+
+    while(l<r){
+        uint32_t mid = l+r>>1;
+        uint32_t midKey = node->cells[mid].key;
+        uint32_t midRowId = node->cells[mid].rowId;
+        if(targetKey < midKey || (targetKey == midKey && targetRowId < midRowId)) r = mid;
+        else l = mid+1;
     }
 
-    return node->header.numCells;
+    return l;
 }
 
-void LeafNodeInsert(LeafNode* node, int32_t key, int32_t rowId){
-    if(node->header.numCells >= LEAF_NODE_MAX_CELLS){
-        cout<<"Error: Node is full, splitting not implemented"<<endl;
+uint32_t InternalNodeFindChild(InternalNode* node, int32_t targetKey, int32_t targetRowId){
+    uint32_t l = 0;
+    uint32_t r = node->header.numCells;
+
+    while(l<r){
+        uint32_t mid = l+r>>1;
+        int32_t midKey = node->cells[mid].key;
+        int32_t midRowId = node->cells[mid].rowId;
+        if(targetKey < midKey || (targetKey == midKey && targetRowId < midRowId)) r=mid;
+        else l = mid+1;
+    }
+
+    if(l == node->header.numCells) return node->rightChild;
+    return node->cells[l].childPage;
+}
+
+uint32_t BtreeFindLeaf(Pager* pager, uint32_t pageNum, int32_t key, int32_t rowId){
+    void* node = pager->GetPage(pageNum);
+    NodeHeader* header = (NodeHeader*) node;
+
+    if(header->type==LEAF) return pageNum;
+
+    InternalNode* internal = (InternalNode*) node;
+    uint32_t childPageNum = InternalNodeFindChild(internal, key, rowId);
+    
+    return BtreeFindLeaf(pager, childPageNum, key, rowId); 
+}
+
+void UpdateChildParents(Pager* pager, InternalNode* parentNode, int32_t parentPageNum){
+    void* child = pager->GetPage(parentNode->rightChild);
+    ((NodeHeader*)child)->parent = parentPageNum;
+
+    for(uint16_t i = 0; i<parentNode->header.numCells;i++){
+        void* child = pager->GetPage(parentNode->cells[i].childPage);
+        ((NodeHeader*)child)->parent = parentPageNum;
+    }
+}
+
+void InsertIntoParent(Pager* pager, NodeHeader* leftChild, int32_t key, int32_t rowId, uint32_t rightChildPageNum){
+    int parentPageNum = leftChild->parent;
+
+    if(parentPageNum == 0){
+        InternalNode* root = (InternalNode*)pager->GetPage(0);
+
+        InsertResult res = InternalNodeInsert(root, pager, key, rowId, rightChildPageNum);
+        if(!res.didSplit) return;
+
+        CreateNewRoot((NodeHeader*)root, pager, res.splitKey, res.splitRowId, res.rightChildPageNum);
+
+
         return;
     }
 
-    uint16_t slot = LeafNodeFindSlot(node, key, rowId);
+    InternalNode* parent = (InternalNode*)pager->GetPage(parentPageNum);
+    InsertResult res = InternalNodeInsert(parent, pager, key, rowId, rightChildPageNum);
 
-    int moveSize = (node->header.numCells - slot)*CELL_SIZE;
-    if(moveSize){
-        void* src = &node->cells[slot];
-        void* dest = &node->cells[slot+1];
-        memmove(dest, src, moveSize);
+    if(res.didSplit){
+        InsertIntoParent(pager, (NodeHeader*) parent, res.splitKey, res.splitRowId, res.rightChildPageNum);
+    }
+}
+
+
+void LeafNodeInsertNonFull(LeafNode* node, int32_t key, int32_t rowId){
+    uint32_t l = 0;
+    uint32_t r = node->header.numCells;
+
+    while(l<r){
+        uint32_t mid = l+r>>1;
+        uint32_t midKey = node->cells[mid].key;
+        uint32_t midRowId = node->cells[mid].rowId;
+
+        if(midKey<key || (midKey == key && midRowId < rowId)){
+            l = mid+1;
+        }
+        else{
+            r = mid;
+        }
     }
 
-    node->cells[slot].key = key;
-    node->cells[slot].rowId = rowId;
+    int cellsToMove = node->header.numCells - l;
+    if(cellsToMove > 0){
+        void* src = &node->cells[l];
+        void* dest = &node->cells[l+1];
+        memmove(dest, src, cellsToMove*CELL_SIZE);
+    }
+
+    node->cells[l].key = key;
+    node->cells[l].rowId = rowId;
     node->header.numCells++;
 }
 
+InsertResult LeafNodeInsert(LeafNode* node, Pager* pager, int32_t key, int32_t rowId){
+    if(node->header.numCells >= LEAF_NODE_MAX_CELLS){
+        int newPageNum = pager->GetUnusedPageNum();
+        
+        LeafNode* rightNode = (LeafNode*) pager->GetPage(newPageNum);
+        InitializeLeafNode(rightNode);
+        rightNode->header.isRoot = 0;
+        rightNode->header.parent = node->header.parent;
+
+        int splitIdx = (LEAF_NODE_MAX_CELLS+1)/2;
+        int cellsMoved = node->header.numCells-splitIdx;
+
+        void* src = &node->cells[splitIdx];
+        void* dest = &rightNode->cells[0];
+        memcpy(dest, src, cellsMoved*CELL_SIZE);
+
+        node->header.numCells = splitIdx;
+        rightNode->header.numCells = cellsMoved;
+
+        int32_t splitKey = rightNode->cells[0].key;
+        int32_t splitRowId = rightNode->cells[0].rowId;
+
+        if(key>=splitKey) LeafNodeInsertNonFull(rightNode, key, rowId);
+        else LeafNodeInsertNonFull(node, key, rowId);
+
+        
+
+        return {true, true, splitKey, splitRowId, (uint32_t)newPageNum};
+    }
+
+    LeafNodeInsertNonFull(node, key, rowId);
+
+    return {true, false, 0, 0, 0};
+}
+
+InsertResult InternalNodeInsert(InternalNode* node, Pager* pager, int32_t key, int32_t rowId, uint32_t rightChildPage){
+    if(node->header.numCells < INTERNAL_NODE_MAX_CELLS){
+        uint32_t i = 0;
+        while(i < node->header.numCells){
+            bool targetIsSmaller = (key < node->cells[i].key) || (key == node->cells[i].key && rowId < node->cells[i].rowId);
+            if(targetIsSmaller) break;
+            i++;
+        }
+
+        for(uint32_t j = node->header.numCells; j > i; j--){
+            node->cells[j] = node->cells[j-1];
+        }
+        
+        if(i == node->header.numCells){
+            node->cells[i].key = key;
+            node->cells[i].rowId = rowId;
+            node->cells[i].childPage = node->rightChild;
+            node->rightChild = rightChildPage;
+        }
+        else{
+            node->cells[i+1].childPage = rightChildPage;
+            node->cells[i].key = key;
+            node->cells[i].rowId = rowId;
+        }
+
+        node->header.numCells++;
+
+        return {true, false, 0, 0, 0};
+    }
+
+    int newPageNum = pager->GetUnusedPageNum();
+    InternalNode* rightNode = (InternalNode*)pager->GetPage(newPageNum);
+
+    rightNode->header.type = INTERNAL;
+    rightNode->header.isRoot = 0;
+    rightNode->header.numCells = 0;
+    rightNode->header.parent = node->header.parent;
+
+    int splitIdx = INTERNAL_NODE_MAX_CELLS/2;
+
+    int32_t promotedKey = node->cells[splitIdx].key;
+    int32_t promotedRowId = node->cells[splitIdx].rowId;
+
+    uint32_t leftNewRightChild = node->cells[splitIdx].childPage;
+
+    int cellsMoved = node->header.numCells - splitIdx - 1;
+
+    memcpy(rightNode->cells, &node->cells[splitIdx+1], cellsMoved*sizeof(InternalCell));
+
+    rightNode->header.numCells = cellsMoved;
+
+    rightNode->rightChild = node->rightChild;
+    node->rightChild = leftNewRightChild;
+    node->header.numCells = splitIdx;
+
+
+    if(key > promotedKey || (key==promotedKey && rowId > promotedRowId)){
+        InternalNodeInsert(rightNode, pager, key, rowId, rightChildPage);
+    }
+    else{
+        InternalNodeInsert(node, pager, key, rowId, rightChildPage);
+    }
+
+    UpdateChildParents(pager, rightNode, newPageNum);
+
+    return {true, true, promotedKey, promotedRowId, (uint32_t)newPageNum};
+}
+
 void LeafNodeSelectRange(LeafNode* node, int L, int R, vector<int>& outRowIds){
-    for(uint16_t i = 0; i<=node->header.numCells; i++){
+    for(uint16_t i = 0; i<node->header.numCells; i++){
         int key = node->cells[i].key;
         if(key < L) continue;
-        if(key>R) continue;
+        if(key>R) break;
         outRowIds.push_back(node->cells[i].rowId);
     }
 }

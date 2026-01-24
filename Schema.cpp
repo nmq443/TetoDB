@@ -33,10 +33,7 @@ Table::Table(const string &name, const string &meta, int rowCount)
 Table::~Table(){
     for(Column* c : schema) delete c;
     schema.clear();
-
-    for(int i = 0;i<MAX_PAGE;i++){
-        if(pager->pages[i]) pager->Flush(i, PAGE_SIZE);
-    }
+    
     for(auto const& [colName, indexPager] : indexPagers) {
         delete indexPager;
     }
@@ -87,13 +84,13 @@ void Table::AddColumn(Column* c){
     schema.push_back(c);
     rowSize += c->size;
     rowsPerPage = PAGE_SIZE / rowSize;
-    maxRows = rowsPerPage*MAX_PAGE;
+    maxRows = rowsPerPage*MAX_PAGES;
 }
 
 void* Table::RowSlot(int rowNum){
     int pageNum = rowNum / rowsPerPage;
 
-    if(pageNum >= MAX_PAGE) return nullptr;
+    if(pageNum >= MAX_PAGES) return nullptr;
 
     void* page = pager->GetPage(pageNum);
 
