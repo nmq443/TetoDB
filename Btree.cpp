@@ -39,9 +39,12 @@ void CreateNewRoot(NodeHeader* root, Pager* pager, int32_t splitKey, int32_t spl
 
 void InitializeLeafNode(LeafNode* node){
     node->header.type = LEAF;
-    node->header.isRoot = 1;
+    node->header.isRoot = 0;
     node->header.numCells = 0;
     node->header.parent = 0;
+
+
+    node->nextLeaf = 0;
 
     memset(node->cells, 0, NODE_SIZE - HEADER_SIZE);
 }
@@ -88,6 +91,8 @@ uint32_t BtreeFindLeaf(Pager* pager, uint32_t pageNum, int32_t key, int32_t rowI
     
     return BtreeFindLeaf(pager, childPageNum, key, rowId); 
 }
+
+
 
 void UpdateChildParents(Pager* pager, InternalNode* parentNode, int32_t parentPageNum){
     void* child = pager->GetPage(parentNode->rightChild);
@@ -160,6 +165,9 @@ InsertResult LeafNodeInsert(LeafNode* node, Pager* pager, int32_t key, int32_t r
         InitializeLeafNode(rightNode);
         rightNode->header.isRoot = 0;
         rightNode->header.parent = node->header.parent;
+
+        rightNode->nextLeaf = node->nextLeaf;
+        node->nextLeaf = newPageNum;
 
         int splitIdx = (LEAF_NODE_MAX_CELLS+1)/2;
         int cellsMoved = node->header.numCells-splitIdx;

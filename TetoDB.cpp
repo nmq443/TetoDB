@@ -20,26 +20,31 @@ int main(int argc, char* argv[]){
 
     DB_INSTANCE = new Database(dbName);
 
-    
-    while(DB_INSTANCE->running){
-        std::cout << "TETO_DB >> ";
+    if(argc>=3){
+        string txtFileName = argv[2];
+        ifstream txtFile(txtFileName);
 
-        std::string command;
-        std::getline(std::cin, command);
-
-        if(command[0] == '.') ProcessDotCommand(command);
-        else {
-            Result res = ProcessCommand(command);
-            switch(res){
-                case Result::OK:
-                case Result::TABLE_ALREADY_EXISTS:
-                case Result::TABLE_NOT_FOUND:
-                case Result::OUT_OF_STORAGE:
-                case Result::INVALID_SCHEMA:
-                case Result::ERROR:
-                    cout << "Execution code: " << (int)res << endl;
-            }
+        if(!txtFile.is_open()){
+            cout<<"ERROR: couldnt open commands file"<<endl;
         }
+        else{
+            string line;
+            while(getline(txtFile, line) && DB_INSTANCE->running){
+                ExecuteCommand(line);
+            }
+            
+        }
+        txtFile.close();
+        DB_INSTANCE->running = 0;
+    }
+
+    while(DB_INSTANCE->running){
+        cout << "TETO_DB >> ";
+
+        string line;
+        getline(cin, line);
+
+        ExecuteCommand(line);
 
     }
 

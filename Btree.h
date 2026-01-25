@@ -30,6 +30,7 @@ struct InternalCell{
 
 struct LeafNode{
     NodeHeader header;
+    uint32_t nextLeaf;
     LeafCell cells[0];
 };
 

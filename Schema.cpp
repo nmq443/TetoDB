@@ -107,10 +107,13 @@ void Table::CreateIndex(const string& columnName){
 
     indexPagers[columnName] = p;
 
-    LeafNode* rootNode = (LeafNode*)p->GetPage(0);
-    InitializeLeafNode(rootNode);
-
-    p->Flush(0, PAGE_SIZE);
+    if(p->numPages == 0){
+        LeafNode* rootNode = (LeafNode*)p->GetPage(0);
+        InitializeLeafNode(rootNode);
+        rootNode->header.isRoot = 1;
+        p->Flush(0, PAGE_SIZE);
+    }
+    
 }
 
 Cursor* Table::StartOfTable(){

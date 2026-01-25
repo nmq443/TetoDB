@@ -83,3 +83,22 @@ void ProcessDotCommand(string &line){
 
     }
 } 
+
+
+void ExecuteCommand(string &line){
+    if(line.empty()) return;
+    
+    if(line[0] == '.') ProcessDotCommand(line);
+    else {
+        Result res = ProcessCommand(line);
+        switch(res){
+            case Result::OK:
+            case Result::TABLE_ALREADY_EXISTS:
+            case Result::TABLE_NOT_FOUND:
+            case Result::OUT_OF_STORAGE:
+            case Result::INVALID_SCHEMA:
+            case Result::ERROR:
+                cout << "Execution code: " << (int)res << endl;
+        }
+    }
+}

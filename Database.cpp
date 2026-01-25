@@ -145,14 +145,24 @@ void Database::SelectWithRange(Table* t, const string& columnName, int L, int R,
     }
 
     Pager* idxPager = t->indexPagers[columnName];
-    uint32_t startLeafNum = BtreeFindLeaf(idxPager, 0, L, 0);
-    LeafNode* startLeaf = (LeafNode*)idxPager->GetPage(startLeafNum);
-
-    //TODO: add next page pointers, and actually move to the 
-    //      next page if the range extends more than the page
-
+    uint32_t leafPageNum = BtreeFindLeaf(idxPager, 0, L, 0);
+    
     vector<int> selectedRowIds;
-    LeafNodeSelectRange(startLeaf, L, R, selectedRowIds);
+
+    bool firstPage = 1;
+    
+    while(leafPageNum != 0 || (firstPage && leafPageNum == 0)){
+        LeafNode* leaf = (LeafNode*)idxPager->GetPage(leafPageNum);
+        LeafNodeSelectRange(leaf, L, R, selectedRowIds);
+
+        if(leaf->header.numCells > 0){
+            int lastKey = leaf->cells[leaf->header.numCells - 1].key;
+            if(lastKey > R) break;
+        }
+        firstPage = 0;
+        leafPageNum = leaf->nextLeaf;
+    }
+    
 
     sort(selectedRowIds.begin(), selectedRowIds.end());
     for(int rowId : selectedRowIds){
