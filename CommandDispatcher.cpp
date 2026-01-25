@@ -3,48 +3,55 @@
 #include "Database.h"
 #include "Schema.h"
 #include "CommandDispatcher.h"
+#include "CommandParser.h"
 
 extern Database* DB_INSTANCE;
 
-Result ProcessCommand(string &line){
-    stringstream ss;
-    ss << line;
-
-    string cmd, keyword, tableName;
-
-    ss >> cmd >> keyword >> tableName;
-
-    if(cmd == "create") return DB_INSTANCE->CreateTable(tableName, ss);
-    if(cmd == "insert") return DB_INSTANCE->Insert(tableName, ss);
-    if(cmd == "drop") return DB_INSTANCE->DropTable(tableName);
-    if(cmd == "select") {
-        Table* t = DB_INSTANCE->GetTable(tableName);
-
-        if(t==nullptr) return Result::TABLE_NOT_FOUND;
-
-        vector<Row*> rows;
-        if(!(ss>>keyword)) DB_INSTANCE->SelectAll(t, rows);
-        else{
-            string columnName;
-            int L, R;
-            ss >> columnName >> L >> R;
-            DB_INSTANCE->SelectWithRange(t, columnName, L, R, rows);
-        }
-
-        for(Row* r : rows){
-            for(Column* c : t->schema){
-                if(c->type == INT) cout << *(int*)(r->value[c->columnName]) << " | ";
-                else cout << '"' << (char*)(r->value[c->columnName]) << "\" | ";
-            }
-            cout << endl;
-            delete r;
-        }
-
-        return Result::OK;
+void PrintTable(const vector<Row*>& rows, Table* t) {
+    if (rows.empty()) {
+        cout << "Empty set." << endl;
+        return;
     }
 
-    return Result::ERROR;
-} 
+    // 1. Calculate column widths
+    vector<int> widths;
+    for (Column* c : t->schema) {
+        widths.push_back(max((int)c->columnName.length(), (int)c->size)); 
+    }
+
+    // 2. Print Header
+    cout << "+";
+    for (int w : widths) cout << string(w + 2, '-') << "+";
+    cout << endl << "|";
+    
+    for (size_t i = 0; i < t->schema.size(); i++) {
+        cout << " " << left << setw(widths[i]) << t->schema[i]->columnName << " |";
+    }
+    cout << endl << "+";
+    for (int w : widths) cout << string(w + 2, '-') << "+";
+    cout << endl;
+
+    // 3. Print Rows
+    for (Row* r : rows) {
+        cout << "|";
+        for (size_t i = 0; i < t->schema.size(); i++) {
+            Column* c = t->schema[i];
+            if (c->type == INT) {
+                cout << " " << left << setw(widths[i]) << *(int*)r->value[c->columnName] << " |";
+            } else {
+                cout << " " << left << setw(widths[i]) << (char*)r->value[c->columnName] << " |";
+            }
+        }
+        cout << endl;
+        delete r; // Clean up row after printing
+    }
+
+    // 4. Print Footer
+    cout << "+";
+    for (int w : widths) cout << string(w + 2, '-') << "+";
+    cout << endl;
+    cout << rows.size() << " rows in set." << endl;
+}
 
 void ProcessDotCommand(string &line){
     stringstream ss;
@@ -84,21 +91,53 @@ void ProcessDotCommand(string &line){
     }
 } 
 
-
 void ExecuteCommand(string &line){
     if(line.empty()) return;
-    
-    if(line[0] == '.') ProcessDotCommand(line);
-    else {
-        Result res = ProcessCommand(line);
-        switch(res){
-            case Result::OK:
-            case Result::TABLE_ALREADY_EXISTS:
-            case Result::TABLE_NOT_FOUND:
-            case Result::OUT_OF_STORAGE:
-            case Result::INVALID_SCHEMA:
-            case Result::ERROR:
-                cout << "Execution code: " << (int)res << endl;
-        }
+
+    if(line[0] == '.') { ProcessDotCommand(line); return; }
+
+    ParsedCommand cmd = CommandParser::Parse(line);
+
+    if (!cmd.isValid) {
+        cout << cmd.errorMessage << endl;
+        return;
     }
+
+    if (cmd.type == "CREATE") {
+        // You might need to adjust CreateTable to take vector<string> args instead of stringstream
+        // Or reconstruct a stringstream here to keep existing logic working
+        stringstream ss; 
+        for(auto& s : cmd.args) ss << s << " ";
+        
+        Result res = DB_INSTANCE->CreateTable(cmd.tableName, ss);
+        if (res == Result::OK) cout << "Query OK: Table '" << cmd.tableName << "' created." << endl;
+        else cout << "Error: Could not create table." << endl;
+    }
+    else if (cmd.type == "INSERT") {
+        stringstream ss;
+        for(auto& s : cmd.args) ss << quoted(s) << " "; // preserve quotes for strings
+        
+        Result res = DB_INSTANCE->Insert(cmd.tableName, ss);
+        if (res == Result::OK) cout << "Query OK: 1 row inserted." << endl;
+        else if (res == Result::INVALID_SCHEMA) cout << "Error: Data type mismatch." << endl;
+        else cout << "Error: Insert failed." << endl;
+    }
+    else if (cmd.type == "SELECT") {
+        Table* t = DB_INSTANCE->GetTable(cmd.tableName);
+        if (!t) { cout << "Error: Table '" << cmd.tableName << "' not found." << endl; return; }
+
+        vector<Row*> rows;
+        if (cmd.args.empty()) {
+            DB_INSTANCE->SelectAll(t, rows);
+        } else {
+            // Args are [col, min, max]
+            string col = cmd.args[0];
+            int l = stoi(cmd.args[1]);
+            int r = stoi(cmd.args[2]);
+            DB_INSTANCE->SelectWithRange(t, col, l, r, rows);
+        }
+        
+        PrintTable(rows, t);
+    }
+
 }

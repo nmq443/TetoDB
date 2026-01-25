@@ -3,10 +3,11 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 using namespace std;
 
-#define MAX_PAGES 100
+
 #define PAGE_SIZE 4096
 
 class Pager {
@@ -18,7 +19,7 @@ public:
     void Flush(int pageNum, size_t size);
     int GetUnusedPageNum(); 
 public:
-    void* pages[MAX_PAGES];
+    vector<void*> pages;
     int fileDescriptor;
     int numPages;
     size_t fileLength;

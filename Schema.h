@@ -64,7 +64,7 @@ public:
     int rowCount;
     int rowSize;
     int rowsPerPage;
-    int maxRows;
+    //int maxRows;
 
 };
 

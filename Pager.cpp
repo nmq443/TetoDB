@@ -30,9 +30,7 @@ Pager::Pager(const std::string& filename){
     }
 
 
-    for(int i = 0; i < MAX_PAGES; i++){
-        pages[i] = nullptr;
-    }
+    pages.clear();
 
     if(fileLength % PAGE_SIZE != 0){
         cerr << "DB file is not a whole number of pages" << endl;
@@ -40,10 +38,11 @@ Pager::Pager(const std::string& filename){
     }
 
     numPages = fileLength/PAGE_SIZE;
+    pages.resize(numPages, nullptr);
 }
 
 Pager::~Pager(){
-    for(int i = 0;i<MAX_PAGES;i++){
+    for(int i = 0;i<numPages; i++){
         if(pages[i]) Flush(i, PAGE_SIZE);
         free(pages[i]);
     }
@@ -51,12 +50,12 @@ Pager::~Pager(){
 }
 
 void* Pager::GetPage(int pageNum){
-    if(pageNum >= MAX_PAGES){
+    if(pageNum > numPages){
         std::cerr << "Error: Tried to fetch page number out of bounds." << std::endl;
         return nullptr;
     }
 
-    if(pageNum >= numPages) numPages++;
+    if(pageNum == numPages) numPages++, pages.push_back(nullptr);
 
     if(pages[pageNum] != nullptr){
         return pages[pageNum];
@@ -70,7 +69,7 @@ void* Pager::GetPage(int pageNum){
         ssize_t bytesRead = read(fileDescriptor, page, PAGE_SIZE);
         
         if(bytesRead == -1){
-            std::cerr << "Error reading file: " << errno << std::endl;
+            cerr << "Error reading file: " << errno << std::endl;
             exit(1);
         }
     }

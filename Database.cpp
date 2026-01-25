@@ -70,7 +70,7 @@ Result Database::Insert(const string& name, stringstream& ss){
     Table* t = GetTable(name);
     if(!t) return Result::TABLE_NOT_FOUND;
 
-    if(t->rowCount >= t->maxRows) return Result::OUT_OF_STORAGE;
+    //if(t->rowCount >= t->maxRows) return Result::OUT_OF_STORAGE;
 
     Row* r = t->ParseRow(ss);
     if(!r) return Result::INVALID_SCHEMA;

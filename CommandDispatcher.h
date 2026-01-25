@@ -8,5 +8,4 @@ class Database;
 
 
 void ExecuteCommand(string &line);
-Result ProcessCommand(string &line);
 void ProcessDotCommand(string &line);

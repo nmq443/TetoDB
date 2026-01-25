@@ -1,0 +1,98 @@
+// CommandParser.cpp
+
+#include "CommandParser.h"
+#include <sstream>
+#include <algorithm>
+
+ParsedCommand CommandParser::Parse(const string& line) {
+    ParsedCommand cmd;
+    cmd.isValid = false;
+    
+    stringstream ss(line);
+    string token;
+    
+    if (!(ss >> token)) return cmd; // Empty line
+    
+    // Normalize to upper case for checking, but keep original for values
+    string upperToken = token;
+    transform(upperToken.begin(), upperToken.end(), upperToken.begin(), ::toupper);
+
+    if (upperToken == "CREATE") {
+        string keyword;
+        ss >> keyword; 
+        if (keyword != "table") {
+            cmd.errorMessage = "Syntax Error: Expected 'TABLE' after CREATE";
+            return cmd;
+        }
+        if (!(ss >> cmd.tableName)) {
+            cmd.errorMessage = "Syntax Error: Missing table name";
+            return cmd;
+        }
+        
+        string colName, colType;
+        int colSize;
+        while (ss >> colName >> colType >> colSize) {
+            cmd.args.push_back(colName);
+            cmd.args.push_back(colType);
+            cmd.args.push_back(to_string(colSize));
+        }
+        cmd.type = "CREATE";
+        cmd.isValid = true;
+    } 
+    else if (upperToken == "INSERT") {
+        string keyword;
+        ss >> keyword; 
+        if (keyword != "into") {
+             cmd.errorMessage = "Syntax Error: Expected 'INTO' after INSERT";
+             return cmd;
+        }
+        if (!(ss >> cmd.tableName)) {
+             cmd.errorMessage = "Syntax Error: Missing table name";
+             return cmd;
+        }
+
+        // Capture the rest of the line as args
+        string val;
+        while (ss >> quoted(val)) { // Use quoted to handle "strings with spaces" if needed
+             cmd.args.push_back(val);
+        }
+        // Basic check: Insert needs at least one value? (Ideally check against schema later)
+        cmd.type = "INSERT";
+        cmd.isValid = true;
+    }
+    else if (upperToken == "SELECT") {
+        string keyword;
+        ss >> keyword; 
+        if (keyword != "from") {
+             cmd.errorMessage = "Syntax Error: Expected 'FROM' after SELECT";
+             return cmd;
+        }
+        if (!(ss >> cmd.tableName)) {
+             cmd.errorMessage = "Syntax Error: Missing table name";
+             return cmd;
+        }
+        
+        cmd.type = "SELECT";
+        cmd.isValid = true;
+
+        string whereKw;
+        if (ss >> whereKw) {
+            if (whereKw == "where") {
+                string col, l, r;
+                if (ss >> col >> l >> r) {
+                    cmd.args.push_back(col);
+                    cmd.args.push_back(l);
+                    cmd.args.push_back(r);
+                } else {
+                    cmd.isValid = false;
+                    cmd.errorMessage = "Syntax Error: WHERE clause needs <col> <min> <max>";
+                }
+            }
+        }
+    }
+    else {
+        cmd.errorMessage = "Unknown command: " + token;
+    }
+
+    return cmd;
+}

@@ -84,13 +84,13 @@ void Table::AddColumn(Column* c){
     schema.push_back(c);
     rowSize += c->size;
     rowsPerPage = PAGE_SIZE / rowSize;
-    maxRows = rowsPerPage*MAX_PAGES;
+    //maxRows = rowsPerPage*MAX_PAGES;
 }
 
 void* Table::RowSlot(int rowNum){
     int pageNum = rowNum / rowsPerPage;
 
-    if(pageNum >= MAX_PAGES) return nullptr;
+    if(pageNum >= pager->numPages) return nullptr;
 
     void* page = pager->GetPage(pageNum);
 
