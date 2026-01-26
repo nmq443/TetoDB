@@ -3,6 +3,7 @@
 #include "Common.h"
 #include "Btree.h"
 #include "Pager.h"
+#include "Schema.h"
 
 #include <cstring>
 #include <iostream>
@@ -272,4 +273,40 @@ void LeafNodeSelectRange(LeafNode* node, int L, int R, vector<int>& outRowIds){
     }
 }
 
+void LeafNodeDeleteRange(Table* t, LeafNode* node, int32_t L, int32_t R){
+    int p = 0;
+    for(int q = 0;q<node->header.numCells;q++){
+        int32_t key = node->cells[q].key;
+        if(L<=key && key<=R){
+            uint32_t rowId = node->cells[q].rowId;
+            t->MarkRowDeleted(rowId);
+            continue;
+        }
+
+        if(p!=q) memcpy(&node->cells[p], &node->cells[q], CELL_SIZE);
+        p++;
+    }
+
+    node->header.numCells = p;
+}
+
+void BtreeDelete(Table* t, Pager* pager, int32_t L, int32_t R){
+    uint32_t leafPageNum = BtreeFindLeaf(pager,0,L,0);
+
+    bool firstPage = 1;
+    
+    while(leafPageNum != 0 || (firstPage && leafPageNum == 0)){
+        LeafNode* leaf = (LeafNode*)pager->GetPage(leafPageNum);
+        LeafNodeDeleteRange(t, leaf, L, R);
+
+        if(leaf->header.numCells > 0){
+            int lastKey = leaf->cells[leaf->header.numCells - 1].key;
+            if(lastKey > R) break;
+        }
+        firstPage = 0;
+        leafPageNum = leaf->nextLeaf;
+        //pager->Flush(leafPageNum, PAGE_SIZE);
+    }
+
+}
 

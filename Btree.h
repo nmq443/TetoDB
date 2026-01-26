@@ -4,9 +4,11 @@
 #include <cstdint>
 #include <vector>
 
+
 using namespace std;
 
 class Pager;
+class Table;
 
 enum NodeType : uint8_t { INTERNAL, LEAF };
 
@@ -59,7 +61,8 @@ uint32_t BtreeFindLeaf(Pager* pager, uint32_t pageNum, int32_t key, int32_t rowI
 void LeafNodeSelectRange(LeafNode* node, int L, int R, vector<int>& outRowIds);
 void UpdateChildParents(Pager* pager, InternalNode* parentNode, int32_t parentPageNum);
 void InsertIntoParent(Pager* pager, NodeHeader* leftChild, int32_t key, int32_t rowId, uint32_t rightChildPageNum);
-
+void BtreeDelete(Table* t, Pager* pager, int32_t L, int32_t R);
+void LeafNodeDeleteRange(Table* t, LeafNode* node, int32_t L, int32_t R);
 
 const uint32_t NODE_SIZE = 4096;
 const uint32_t HEADER_SIZE = sizeof(NodeHeader);
