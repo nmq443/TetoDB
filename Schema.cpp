@@ -1,9 +1,13 @@
 // Schema.cpp
 
-
 #include "Schema.h"
-#include "Btree.h"
-#include "Pager.h"
+#include "Btree.h"  // Needed for CreateIndex logic
+#include "Pager.h"  // Needed for Pager methods
+
+#include <cstring>
+#include <iostream>
+#include <iomanip> // for quoted
+#include <sstream>
 
 
 Column::Column(const string &name, Type type, uint32_t size, uint32_t offset)

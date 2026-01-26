@@ -1,9 +1,13 @@
 // CommandDispatcher.cpp
 
-#include "Database.h"
-#include "Schema.h"
 #include "CommandDispatcher.h"
+#include "Database.h"
+#include "Schema.h"      // Need full definition of Row/Table to print
 #include "CommandParser.h"
+
+#include <iostream>
+#include <iomanip> // setw
+#include <sstream> // stringstream
 
 extern Database* DB_INSTANCE;
 

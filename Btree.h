@@ -4,11 +4,12 @@
 #include <cstdint>
 #include <vector>
 
-
 using namespace std;
 
+// Forward Declarations: Eliminates dependency loops
 class Pager;
 class Table;
+
 
 enum NodeType : uint8_t { INTERNAL, LEAF };
 

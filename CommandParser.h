@@ -1,7 +1,11 @@
 //CommandParser.h
 
 #pragma once
-#include "Common.h"
+
+#include <string>
+#include <vector>
+
+using namespace std;
 
 struct ParsedCommand {
     string type; // CREATE, INSERT, SELECT, DROP, DELETE

@@ -1,12 +1,12 @@
 // Btree.cpp
 
-#include "Common.h"
 #include "Btree.h"
-#include "Pager.h"
-#include "Schema.h"
+#include "Pager.h"  // Now we need the full definition
+#include "Schema.h" // Now we need Table definition (IsRowDeleted)
+#include "Common.h"
 
 #include <cstring>
-#include <iostream>
+#include <algorithm> // for memmove
 
 
 void CreateNewRoot(NodeHeader* root, Pager* pager, int32_t splitKey, uint32_t splitRowId, uint32_t rightChildPageNum){

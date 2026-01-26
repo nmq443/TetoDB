@@ -2,11 +2,15 @@
 
 #pragma once
 
-#include "Common.h"
+#include <string>
+#include <vector>
 
-class Database;
-class Table;
+using namespace std;
+
+// Forward decl
+class Table; 
 class Row;
+
 
 void PrintTable(const vector<Row*>& rows, Table* t);
 void ExecuteCommand(const string &line);

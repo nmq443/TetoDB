@@ -1,12 +1,13 @@
 // Database.cpp
 
-#include <vector>
-#include <stack>
-#include <map>
 #include "Database.h"
 #include "Schema.h"
 #include "Btree.h"
 #include "Pager.h"
+
+#include <fstream>
+#include <iostream>
+#include <algorithm> // for sort
 
 
 Database::Database(const string& name)

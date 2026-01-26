@@ -2,19 +2,9 @@
 
 #pragma once
 
-#include <algorithm>
-#include <vector>
-#include <map>
 #include <string>
-#include <iostream>
-#include <cstring>
+#include <vector>
 #include <cstdint>
-#include <sstream>
-#include <iomanip>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <fstream>
 
 using namespace std;
 

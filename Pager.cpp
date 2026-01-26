@@ -1,15 +1,28 @@
 // Pager.cpp
 
+#include "Pager.h"
+
+#include <iostream>
+#include <algorithm> // for std::max
+#include <cstring>   // for memset
+#include <fcntl.h>   // open flags
+#include <sys/stat.h> // fstat
+
+#ifdef _WIN32
+    #include <io.h>  // Windows equivalent of unistd.h
+    #define F_OK 0
+    // Windows permissions
+    #define S_IWUSR S_IWRITE
+    #define S_IRUSR S_IREAD
+#else
+    #include <unistd.h> // Linux/Mac standard
+#endif
+
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif
 
-#include "Pager.h"
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <fstream>
-#include <iostream>
+
 
 
 using namespace std;
@@ -92,7 +105,11 @@ void Pager::Flush(uint32_t pageNum, uint32_t size){
     }
 
     fileLength = max(fileLength, (uint32_t)(pageNum + 1) * PAGE_SIZE);
-    _commit(fileDescriptor);
+    #ifdef _WIN32
+        _commit(fileDescriptor); // Windows commit
+    #else
+        fsync(fileDescriptor);   // Linux commit
+    #endif
 }
 
 void Pager::FlushAll(){

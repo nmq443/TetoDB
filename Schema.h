@@ -4,13 +4,13 @@
 
 
 #include "Common.h"
+#include <map>
 #include <stack>
-
-using namespace std;
 
 
 class Pager;
 
+using namespace std;
 
 class Column{
 public:

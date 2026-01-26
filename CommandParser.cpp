@@ -1,8 +1,11 @@
 // CommandParser.cpp
 
 #include "CommandParser.h"
+#include "Common.h"
+
 #include <sstream>
 #include <algorithm>
+#include <iomanip> // quoted
 
 ParsedCommand CommandParser::Parse(const string& line) {
     ParsedCommand cmd;

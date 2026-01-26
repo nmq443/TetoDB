@@ -3,6 +3,8 @@
 #pragma once
 
 #include "Common.h"
+#include <map>
+#include <sstream> // Needed for stringstream ref in signatures
 
 using namespace std;
 
