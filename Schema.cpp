@@ -90,7 +90,7 @@ void Table::AddColumn(Column* c){
 void* Table::RowSlot(int rowNum){
     int pageNum = rowNum / rowsPerPage;
 
-    if(pageNum >= pager->numPages) return nullptr;
+    //if(pageNum >= pager->numPages) return nullptr;
 
     void* page = pager->GetPage(pageNum);
 

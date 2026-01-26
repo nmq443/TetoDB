@@ -93,10 +93,12 @@ void Pager::Flush(int pageNum, size_t size){
         return;
     }
 
+    fileLength = max(fileLength, (size_t)(pageNum + 1) * PAGE_SIZE);
     _commit(fileDescriptor);
 }
 
 int Pager::GetUnusedPageNum(){
+    pages.push_back(nullptr);
     return numPages++;
 }
 
