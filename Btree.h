@@ -72,5 +72,5 @@ const uint32_t HEADER_SIZE = sizeof(NodeHeader);
 const uint32_t LEAF_CELL_SIZE = sizeof(LeafCell);
 const uint32_t INTERNAL_CELL_SIZE = sizeof(InternalCell);
 
-const uint32_t LEAF_NODE_MAX_CELLS = 3;//(NODE_SIZE - HEADER_SIZE) / CELL_SIZE;
-const uint32_t INTERNAL_NODE_MAX_CELLS = 3;// (NODE_SIZE - sizeof(InternalNode)) / sizeof(InternalCell);
+const uint32_t LEAF_NODE_MAX_CELLS = (LEAF_NODE_SIZE - sizeof(LeafNode)) / LEAF_CELL_SIZE;
+const uint32_t INTERNAL_NODE_MAX_CELLS = (INTERNAL_NODE_SIZE - sizeof(InternalNode)) / INTERNAL_CELL_SIZE;

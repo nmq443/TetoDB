@@ -79,7 +79,34 @@ void ProcessDotCommand(const string &line){
         return;
     }
     if(cmd == ".tables"){
-        for(auto &[name, table] : DB_INSTANCE->tables) cout << name << endl;
+        if (DB_INSTANCE->tables.empty()) {
+            cout << "No tables found." << endl;
+            return;
+        }
+
+        // Border: 21 dashes, 9 dashes, 8 dashes
+        string border = "+" + string(21, '-') + "+" + string(9, '-') + "+" + string(8, '-') + "+";
+
+        cout << border << endl;
+        
+        // Header
+        cout << "| " << left << setw(20) << "Table Name" 
+            << "| " << left << setw(8) << "Rows" 
+            << "| " << left << setw(6) << "Cols" << " |" << endl;
+        
+        cout << border << endl;
+
+        // Rows
+        for(auto &[name, table] : DB_INSTANCE->tables) {
+            cout << "| " << left << setw(20) << name 
+                << "| " << left << setw(8) << table->rowCount 
+                << "| " << left << setw(6) << table->schema.size() << " |" << endl;
+        }
+
+        // Footer
+        cout << border << endl;
+        
+        cout << DB_INSTANCE->tables.size() << " tables found." << endl;
         return;
     }
     if(cmd == ".schema"){
