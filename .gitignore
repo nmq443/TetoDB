@@ -4,3 +4,5 @@
 *.btree
 *.txt
 !CMakeLists.txt
+/.vs
+/out
