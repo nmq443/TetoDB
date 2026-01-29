@@ -9,17 +9,17 @@
 #include "CommandDispatcher.h"
 
 
-Database* DB_INSTANCE = nullptr;
+
 
 int main(int argc, char* argv[]){
     if(argc<2){
         cout << "Need filename" <<endl;
         return -1;
     }
-
+    
     string dbName = argv[1];
-
-    DB_INSTANCE = new Database(dbName);
+    Database::InitInstance(dbName);
+    auto& dbInstance = Database::GetInstance();
 
     if(argc>=3){
         string txtFileName = argv[2];
@@ -31,7 +31,7 @@ int main(int argc, char* argv[]){
         }
         else{
             string line;
-            while(getline(txtFile, line) && DB_INSTANCE->running){
+            while(getline(txtFile, line) && dbInstance.running){
                 auto start = chrono::high_resolution_clock::now();
                 ExecuteCommand(line);
                 auto end = chrono::high_resolution_clock::now();
@@ -42,10 +42,10 @@ int main(int argc, char* argv[]){
             
         }
         txtFile.close();
-        DB_INSTANCE->running = 0;
+        dbInstance.running = 0;
     }
 
-    while(DB_INSTANCE->running){
+    while(dbInstance.running){
         cout << "TETO_DB >> ";
 
         string line;
@@ -61,7 +61,6 @@ int main(int argc, char* argv[]){
     }
 
     cout << "Exiting..." << endl;
-    delete DB_INSTANCE;
 
     return 0;
 }
