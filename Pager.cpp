@@ -18,6 +18,8 @@
     #define write _write
     #define lseek _lseek
     #define chsize _chsize // For truncating
+    #include <cstddef>
+    using ssize_t = ptrdiff_t;
 #else
     #include <unistd.h>
     #define O_BINARY 0

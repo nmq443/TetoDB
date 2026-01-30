@@ -4,3 +4,4 @@
 *.btree
 *.txt
 *.tmp
+!CMakeLists.txt
