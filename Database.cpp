@@ -9,6 +9,7 @@
 #include <iostream>
 #include <algorithm> // for sort
 
+
 std::unique_ptr<Database> Database::instance = nullptr;
 
 Database& Database::GetInstance()

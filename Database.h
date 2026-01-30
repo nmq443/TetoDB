@@ -5,6 +5,7 @@
 #include "Common.h"
 #include <map>
 #include <sstream> // Needed for stringstream ref in signatures
+#include <memory> // for smart pointers
 
 using namespace std;
 
