@@ -79,7 +79,7 @@ private:
     uint32_t InternalNodeFindChild(InternalNode<KeyType>* node, KeyType targetKey, uint32_t targetRowId);
     uint16_t LeafNodeFindSlot(LeafNode<KeyType>* node, KeyType targetKey, uint32_t targetRowId);
 
-    InsertResult<KeyType> InternalNodeInsert(InternalNode<KeyType>* node, KeyType key, uint32_t rowId, uint32_t rigthChildPage);
+    InsertResult<KeyType> InternalNodeInsert(InternalNode<KeyType>* node, KeyType key, uint32_t rowId, uint32_t rightChildPage);
     InsertResult<KeyType> LeafNodeInsert(LeafNode<KeyType>* node, KeyType key, uint32_t rowId);
 
     bool LeafNodeInsertNonFull(LeafNode<KeyType>* node, KeyType key, uint32_t rowId);
