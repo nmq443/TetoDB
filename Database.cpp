@@ -132,6 +132,8 @@ void Database::SelectWithRange(Table* t, const string& columnName, void* L, void
     selectedRowIds.clear();
     t->SelectRange(columnName, L, R, selectedRowIds);
 
+    sort(selectedRowIds.begin(), selectedRowIds.end());
+
     for(uint32_t i : selectedRowIds){
         Row* r = new Row(t->schema);
         void* slot = t->RowSlot(i, 0);
